@@ -1,0 +1,16 @@
+closestDOMS creates a list of the charges and distances of DOMS within a certain radius of the path 
+of the most energetic muon or if there is no muon, the  most energetic particle in the MC tree
+There are two lists for charges, and two lists for distances (perpendicular to particle path)
+One list is for DOMS in DC, the other is for DOMS outside of DC
+Deep Core DOM lists are labeled with DC, others are labeled with Veto
+
+Complies thusly:
+g++ `icetray-config icetray phys-services dataclasses dataio` closestDOMS.cxx -o closestDOMS 
+
+
+runs thusly:
+./closestDOMS 250.0 input.i3 output.i3 OfflinePulses
+radius is 250m
+runs on input file
+returns output file
+runs over pulses in OfflinePulses
