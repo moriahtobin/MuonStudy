@@ -201,7 +201,7 @@ void CalculateCylinderValues(boost::shared_ptr<I3Frame> frame){
 		}
 		else if(isDust){
 			cylinderChargesInDust.push_back(qTotDom);
-			ClosestDOMS.push_back(1.0);
+			ClosestDOMS.push_back(3.0);
 			ClosestDOMS.push_back(stringnom);
 			ClosestDOMS.push_back(omnom);
 			ClosestDOMS.push_back(domCadToTrack);
