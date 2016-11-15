@@ -17,10 +17,13 @@
 static double trackCylinderRadius_;
 static std::string spulses_;
 
+//Check to see if the particle is a Muon
 bool IsMuon(const I3Particle& p1){
 	return p1.GetType()==I3Particle::MuPlus || p1.GetType()==I3Particle::MuMinus;
 }
 
+//Find the Most Energetic Muon, or if there are no muons
+//return the most energetic particle
 bool BestMuon(const I3Particle& p1, const I3Particle& p2){
 	if(IsMuon(p1) && !IsMuon(p2)){
 	return true;
@@ -31,7 +34,14 @@ bool BestMuon(const I3Particle& p1, const I3Particle& p2){
 	return p1.GetEnergy() > p2.GetEnergy();
 }
 
+
+//This is our main process. It collects and calculates all the values of interest
+//from the particle interaction, and then returns them into the frame.
+//The point is to find the DOMs (Digital Optical Modules or light detectors)
+//within a cylinder of radius defined by the user and package thier information
+//based on what part of the detector they are located in for further study. 
 void CalculateCylinderValues(boost::shared_ptr<I3Frame> frame){
+//Define values of interest
 	I3VectorDouble hitDistancesFromVetoTrack;
 	I3VectorDouble hitDistancesFromDCTrack;
 	I3VectorDouble hitDistancesInDust;
@@ -41,6 +51,7 @@ void CalculateCylinderValues(boost::shared_ptr<I3Frame> frame){
 	I3VectorDouble ClosestDOMS;
 	I3VectorDouble NclosestDOMS;
 
+//Ensure that the frame has the pulses specified for our calculations
 	if(! frame->Has(spulses_))
 		return;
 
@@ -48,11 +59,14 @@ void CalculateCylinderValues(boost::shared_ptr<I3Frame> frame){
 	boost::shared_ptr<const I3Geometry>			geometry = frame->Get<boost::shared_ptr<const I3Geometry> >(stringtheorygeometry);
 	boost::shared_ptr<const I3RecoPulseSeriesMap>	pulsesMap = frame->Get<boost::shared_ptr<const I3RecoPulseSeriesMap> >(spulses_);
 	boost::shared_ptr<const I3MCTree>				tree = frame->Get<boost::shared_ptr<const I3MCTree> >("I3MCTree");
+//The below section is for running on simulation files with Bad DOM lists that need to be specified
 //	boost::shared_ptr<const BadDomsList>			baddoms = frame->Get<boost::shared_ptr<const I3Vector<OmKey>>("BadDomsList");
 	
+// When running on Corsika simulation this is needed to ensure the frame is not empty
 //	if(frame->Has(CorsikaWeightMap) && frame['CorsikaWeightMap']['Multiplicity']==0)
 //		return;
 
+//Initializing variables
 	double nDC = 0.;
 	double nDust = 0.;
 	double nVeto = 0.;
@@ -66,6 +80,8 @@ void CalculateCylinderValues(boost::shared_ptr<I3Frame> frame){
 	double largestd = 0.;
 
 
+//Find the most energetic muon, or if there are no muons, the most energetic
+//particle in the event, save its energy and angle of incidence (zenith)
 	I3Particle particle = *I3MCTreeUtils::GetBest(*tree, BestMuon);
 	double energy = particle.GetEnergy();
 	double zenith = particle.GetZenith();
@@ -82,18 +98,19 @@ void CalculateCylinderValues(boost::shared_ptr<I3Frame> frame){
 		if(std::isnan(domCadToTrack) || domCadToTrack > trackCylinderRadius_)
 			continue;
 
-		//Check if DOM is Bad
+		//Check if DOM is Bad for files with BadDomLists
 		//bool isBad = (std::find(baddoms, end, omKey) != end);
 		//if(isBad)
 		//	continue;
 
-		// Check if DOM is in DeepCore sub-detector.
+		// Check if DOM is in DeepCore sub-detector, and if it is the dust layer where the ice has poor optical qualities.
 		int deepCoreStrings [15] = {26,27,35,36,37,45,46,79,80,81,82,83,84,85,86};
 		int* end = deepCoreStrings+15;
 		bool isDC = (std::find(deepCoreStrings, end, omKey.GetString()) != end && omPos.GetZ() < -150.0);//omnom > 10);
 		bool isDust = (omPos.GetZ() < 0. && omPos.GetZ() > -150.0);
 	
-		// Record the distance of this hit from the track.
+		// Record the distance of this hit (light signal) from the track.
+		// Keep track of the closest hit to the track in each detector region for the event.
 		//double hitDistAlongTrack = I3Calculator::DistanceAlongTrack(particle, omPos);
 		if(isDC){
 			hitDistancesFromDCTrack.push_back(domCadToTrack);
@@ -125,6 +142,7 @@ void CalculateCylinderValues(boost::shared_ptr<I3Frame> frame){
 
 		// Sanity check: Check if there are pulses at all.
 		if(pulsesMapCIter == pulsesMap->end())
+		// Push values for empty event
 		{
 			if(isDC){
 				cylinderChargesInDC.push_back(qTotDCDom);
@@ -182,6 +200,11 @@ void CalculateCylinderValues(boost::shared_ptr<I3Frame> frame){
 				}
 			}
 		}//END FOR I3RecoPulseSeries
+		//Record basic information for each registered hit.
+		//Charge of the hit, what string the detector which registers the hit is on, the dom id that registers the hit,
+		//The energy and zenith of the interaction that produced the hit, the distance from the DOM to the particle that
+		//produced the light, and a numerical indicator or which zone the dom is in (1 for the Deep Core subarray, 
+		//3 for the dust layer, and 0 for the rest of the detector, which acts as a veto region for this analysis).
 		if(isDC){
 			cylinderChargesInDC.push_back(qTotDCDom);
 			ClosestDOMS.push_back(1.0);
@@ -234,6 +257,7 @@ void CalculateCylinderValues(boost::shared_ptr<I3Frame> frame){
 			}
 		}
 	}//END FOR I3RecoPulseSeriesMap
+	//Collect all the min/max/sum values for the entire event
 	NclosestDOMS.push_back(nDC);
 	NclosestDOMS.push_back(nDust);
 	NclosestDOMS.push_back(nVeto);
@@ -247,6 +271,7 @@ void CalculateCylinderValues(boost::shared_ptr<I3Frame> frame){
 	NclosestDOMS.push_back(largestd);
 	NclosestDOMS.push_back(energy);
 	NclosestDOMS.push_back(zenith);
+	//Output all the calculated values
 	frame->Put("HitDistancesFromVetoTrack", boost::make_shared<const I3VectorDouble>(hitDistancesFromVetoTrack));
 	frame->Put("HitDistancesFromDCTrack", boost::make_shared<const I3VectorDouble>(hitDistancesFromDCTrack));
 	frame->Put("HitDistancesInDust", boost::make_shared<const I3VectorDouble>(hitDistancesInDust));
@@ -258,7 +283,9 @@ void CalculateCylinderValues(boost::shared_ptr<I3Frame> frame){
 }
 
 
-
+//Input our user values, print error if there are not enough values, run over all the events/frames in the input file
+// and produce an output file with the new calculated values.
+//Includes exceptions for all the errors that were encountered during use.
 int main(int argc, char* argv[]){
         if(argc<5){
                 std::cerr << "Missing command line input: cylinder radius, input file, output file, pulse map" << std::endl;

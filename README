@@ -1,13 +1,34 @@
-closestDOMS creates a list of the charges and distances of DOMS within a certain radius of the path 
-of the most energetic muon or if there is no muon, the  most energetic particle in the MC tree
-There are two lists for charges, and two lists for distances (perpendicular to particle path)
-One list is for DOMS in DC, the other is for DOMS outside of DC
-Deep Core DOM lists are labeled with DC, others are labeled with Veto
+=====INTRO=====
+This project is for work on the IceCube Neutrino Observatory, a collection of over 5000 light detectors located over a cubic kilometer, 1.5 kilometers below the surface in the mostly clear deep ice  near the South Pole in Antarctica.
 
-Complies thusly:
+
+=====GLOSSARY=====
+DOMs (Digital Optical Modules) are the downward facing PMTs (light detectors) in the experiment
+
+muons are charged particles that pass through the detector producing light (the light is Cherenkov radiation if you're curious)
+muons at the energies that the detector looks at move in straight lines emitting a cone of light
+
+DC is the Deep Core sub-detector array. This is just a collection of light detectors with smaller spacings so that it can detect lower energy particles than the rest of the detector. DC is approximately cylindrical and surrounded radially and above by the larger detector. Directly above DC is a layer of the detector with poor visibility (it contains a lot of particulates/dust which make it cloudy, so light doesn't travel nearly as far) called the Dust Layer.
+
+The larger detector is used as a veto region: The muons we are interested in start inside the detector, but there are far more muons which start outside the detector and then travel through the detector. One of the interesting problems in Deep Core analyses is trying to keep as many neutrinos which start in Deep Core and reject as many that start outside the detector. This may sound simple, but because the outer strings have larger spacings and the ice is not uniformly clear, some of the muons created outside the detector leave signals that are very similar to detector noise until they reach the inner detector with it's more finely spaced light detectors, in effect appearing to start in the inner detector.
+
+MC stands for Monte Carlo, the MC tree is a bundle of information in the simulated detector data that specifies the particles produced by the simulation and their properties
+
+.i3 is the file extension for IceCube data files
+
+OfflinePulses is a bundle of information that stores the recorded signals for each of the light detectors in the full detector for the time period defined by the total event
+
+
+=====DESCRIPTION=====
+closestDOMS creates a list of the charges and distances of DOMS within a certain radius of the path of the most energetic muon or if there is no muon, the  most energetic particle in the MC tree
+There are three lists for charges, and three lists for distances (perpendicular to particle path)
+One list is for DOMs in DC, one list is for DOMs in the Dust Layer (labeled as Dust) and the last is all other DOMs labeled with Veto
+
+Compiles thusly:
 g++ `icetray-config icetray phys-services dataclasses dataio` closestDOMS.cxx -o closestDOMS 
 
 
+=====USER-INSTRUCTIONS=====
 runs thusly:
 ./closestDOMS 250.0 input.i3 output.i3 OfflinePulses
 radius is 250m
